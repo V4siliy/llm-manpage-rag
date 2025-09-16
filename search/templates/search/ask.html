@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Ask a Question - Man Page RAG{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">
+                        <i class="fas fa-question-circle"></i> Ask a Question
+                    </h2>
+                    <p class="text-muted mb-0">Get answers about Linux commands and system functions using our RAG-powered assistant</p>
+                </div>
+                <div class="card-body">
+                    <form id="askForm">
+                        {% csrf_token %}
+                        <div class="form-group mb-3">
+                            <label for="questionInput" class="form-label">Your Question</label>
+                            <textarea 
+                                class="form-control" 
+                                id="questionInput" 
+                                rows="3" 
+                                placeholder="Ask anything about Linux commands, system functions, or man pages..."
+                                required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="askButton">
+                            <i class="fas fa-search"></i> Ask Question
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Loading Section -->
+            <div id="loadingSection" class="card mt-4" style="display: none;">
+                <div class="card-body text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 id="loadingMessage">Consulting the manual pages...</h5>
+                    <p class="text-muted">This may take a few moments...</p>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="mt-4" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-lightbulb"></i> Answer
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="answerContent"></div>
+                    </div>
+                </div>
+
+                <!-- Sources Section -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-book"></i> Sources
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="sourcesContent"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div id="errorSection" class="alert alert-danger mt-4" style="display: none;">
+                <h5><i class="fas fa-exclamation-triangle"></i> Error</h5>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const askForm = document.getElementById('askForm');
+    const questionInput = document.getElementById('questionInput');
+    const askButton = document.getElementById('askButton');
+    const loadingSection = document.getElementById('loadingSection');
+    const loadingMessage = document.getElementById('loadingMessage');
+    const resultsSection = document.getElementById('resultsSection');
+    const answerContent = document.getElementById('answerContent');
+    const sourcesContent = document.getElementById('sourcesContent');
+    const errorSection = document.getElementById('errorSection');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Loading messages rotation
+    let loadingInterval;
+    let messageIndex = 0;
+    const loadingMessages = [
+        "Consulting the manual pages...",
+        "Decoding ancient UNIX wisdom...",
+        "Asking the kernel for permission...",
+        "Parsing man pages with extreme prejudice...",
+        "Summoning the spirit of Dennis Ritchie...",
+        "Debugging reality.exe...",
+        "Compiling answers from source code...",
+        "Running sudo apt-get wisdom...",
+        "Brewing coffee for the documentation team...",
+        "Teaching a cat to use vi...",
+        "Explaining recursion to a recursive function...",
+        "Optimizing the space-time continuum...",
+        "Running make install on common sense...",
+        "Segfaulting into enlightenment...",
+        "Garbage collecting old memories...",
+        "Forking processes in the knowledge tree...",
+        "Mounting the filesystem of understanding...",
+        "Chmod 777 on the answer directory...",
+        "Piping wisdom through grep...",
+        "Awaiting response from the mainframe..."
+    ];
+
+    function startLoadingAnimation() {
+        loadingSection.style.display = 'block';
+        resultsSection.style.display = 'none';
+        errorSection.style.display = 'none';
+        
+        messageIndex = 0;
+        loadingMessage.textContent = loadingMessages[messageIndex];
+        
+        loadingInterval = setInterval(() => {
+            messageIndex = (messageIndex + 1) % loadingMessages.length;
+            loadingMessage.textContent = loadingMessages[messageIndex];
+        }, 2000);
+    }
+
+    function stopLoadingAnimation() {
+        if (loadingInterval) {
+            clearInterval(loadingInterval);
+        }
+        loadingSection.style.display = 'none';
+    }
+
+    function showError(message) {
+        stopLoadingAnimation();
+        errorMessage.textContent = message;
+        errorSection.style.display = 'block';
+        resultsSection.style.display = 'none';
+    }
+
+    function showResults(data) {
+        stopLoadingAnimation();
+        
+        // Display answer
+        answerContent.innerHTML = `<div class="answer-text">${data.answer.replace(/\n/g, '<br>')}</div>`;
+        
+        // Display sources
+        if (data.sources && data.sources.length > 0) {
+            let sourcesHtml = '<div class="sources-list">';
+            data.sources.forEach((source, index) => {
+                const similarity = source.similarity ? ` (${(source.similarity * 100).toFixed(1)}% match)` : '';
+                sourcesHtml += `
+                    <div class="source-item mb-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>${source.document}</strong> - ${source.title}
+                                <br>
+                                <small class="text-muted">Section: ${source.section}${similarity}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            sourcesHtml += '</div>';
+            sourcesContent.innerHTML = sourcesHtml;
+        } else {
+            sourcesContent.innerHTML = '<p class="text-muted">No sources found.</p>';
+        }
+        
+        resultsSection.style.display = 'block';
+        errorSection.style.display = 'none';
+    }
+
+    askForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const question = questionInput.value.trim();
+        if (!question) {
+            showError('Please enter a question.');
+            return;
+        }
+
+        askButton.disabled = true;
+        askButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        startLoadingAnimation();
+
+        try {
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                             document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+            
+            if (!csrfToken) {
+                throw new Error('CSRF token not found');
+            }
+
+            const response = await fetch('/search/ask-api/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    question: question
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'An error occurred');
+            }
+
+            showResults(data);
+
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            askButton.disabled = false;
+            askButton.innerHTML = '<i class="fas fa-search"></i> Ask Question';
+        }
+    });
+
+    // Auto-resize textarea
+    questionInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+    });
+});
+</script>
+
+<style>
+.answer-text {
+    line-height: 1.6;
+    font-size: 1.1rem;
+}
+
+.source-item {
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background-color: #f8f9fa;
+}
+
+.source-item:hover {
+    background-color: #e9ecef;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+#loadingMessage {
+    color: #0d6efd;
+    font-weight: 500;
+}
+</style>
+{% endblock %}

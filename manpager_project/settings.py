@@ -151,3 +151,31 @@ if not DEBUG:
 # PostgreSQL Full-text Search Configuration
 # Use 'simple' config for technical text to avoid stemming that breaks identifiers
 POSTGRES_FULL_TEXT_SEARCH_CONFIG = 'simple'
+
+# Funny sentences for loading animations (SimCity style)
+FUNNY_LOADING_SENTENCES = [
+    "Consulting the manual pages...",
+    "Decoding ancient UNIX wisdom...",
+    "Asking the kernel for permission...",
+    "Parsing man pages with extreme prejudice...",
+    "Summoning the spirit of Dennis Ritchie...",
+    "Debugging reality.exe...",
+    "Compiling answers from source code...",
+    "Running sudo apt-get wisdom...",
+    "Brewing coffee for the documentation team...",
+    "Teaching a cat to use vi...",
+    "Explaining recursion to a recursive function...",
+    "Optimizing the space-time continuum...",
+    "Running make install on common sense...",
+    "Segfaulting into enlightenment...",
+    "Garbage collecting old memories...",
+    "Forking processes in the knowledge tree...",
+    "Mounting the filesystem of understanding...",
+    "Chmod 777 on the answer directory...",
+    "Piping wisdom through grep...",
+    "Awaiting response from the mainframe...",
+]
+
+# OpenAI Configuration
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = "gpt-4o-mini"  # Using GPT-4o-mini as GPT-5 nano is not available yet

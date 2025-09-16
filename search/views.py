@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 import json
 
 from .search import ManPageSearch
+from .rag_service import ManPageRAGService
 
 
 @login_required
@@ -96,5 +97,48 @@ def search_api(request):
         
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def ask_view(request):
+    """Ask questions and get answers using RAG workflow"""
+    return render(request, "search/ask.html")
+
+
+@csrf_exempt
+@login_required
+def ask_api(request):
+    """API endpoint for asking questions with RAG"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        question = data.get('question', '').strip()
+        
+        if not question:
+            return JsonResponse({'error': 'Question is required'}, status=400)
+        
+        rag_service = ManPageRAGService()
+        result = rag_service.ask_question(question)
+        
+        return JsonResponse(result)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@login_required
+def loading_message_api(request):
+    """API endpoint to get random loading messages"""
+    try:
+        rag_service = ManPageRAGService()
+        message = rag_service.get_random_loading_message()
+        return JsonResponse({'message': message})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
