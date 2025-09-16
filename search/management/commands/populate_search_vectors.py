@@ -44,6 +44,12 @@ class Command(BaseCommand):
         # Process in batches
         while processed < total_chunks:
             batch = chunks_without_vectors[processed:processed + batch_size]
+            batch_size_actual = len(batch)
+            
+            if batch_size_actual == 0:
+                break
+            
+            successful_in_batch = 0
             
             with transaction.atomic():
                 for chunk in batch:
@@ -66,14 +72,15 @@ class Command(BaseCommand):
                         
                         chunk.qdrant_id = qdrant_id
                         chunk.save(update_fields=['qdrant_id'])
+                        successful_in_batch += 1
                         
                     except Exception as e:
                         self.stdout.write(
                             self.style.WARNING(f'Failed to index chunk {chunk.id}: {e}')
                         )
             
-            processed += len(batch)
-            self.stdout.write(f'Processed {processed}/{total_chunks} chunks...')
+            processed += batch_size_actual
+            self.stdout.write(f'Processed {processed}/{total_chunks} chunks... (Successfully indexed: {successful_in_batch}/{batch_size_actual} in this batch)')
         
         self.stdout.write(
             self.style.SUCCESS(f'Successfully populated Qdrant vectors for {processed} chunks.')
