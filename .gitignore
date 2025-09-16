@@ -6,7 +6,12 @@ dist/
 wheels/
 *.egg-info
 
+# IDE
+.idea/
+
 # Virtual environments
 .venv
+
 /data/
-.idea
+/db.sqlite3
+/.env
