@@ -9,4 +9,8 @@ dependencies = [
     "django>=5.0.0",
     "psycopg2-binary>=2.9.0",
     "python-dotenv>=1.1.1",
+    "qdrant-client>=1.7.0",
+    "openai>=1.0.0",
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
 ]

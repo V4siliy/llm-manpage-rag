@@ -3,13 +3,9 @@ from django.contrib.auth import login
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
 
-from .models import LoginCode, Document, Chunk
+from .models import LoginCode
 from .services import send_login_code, TooManyRequests
-from .search import ManPageSearch
 
 
 def login_request(request):
@@ -78,93 +74,3 @@ def profile_view(request):
         return redirect("accounts:login")
     
     return render(request, "accounts/profile.html", {"user": request.user})
-
-
-def search_view(request):
-    """Search man-pages with full-text and fuzzy search"""
-    if not request.user.is_authenticated:
-        return redirect("accounts:login")
-    
-    query = request.GET.get('q', '').strip()
-    search_type = request.GET.get('type', 'fulltext')
-    limit = int(request.GET.get('limit', 20))
-    
-    results = []
-    stats = None
-    
-    if query:
-        searcher = ManPageSearch()
-        chunks = searcher.search_chunks(query, search_type, limit)
-        
-        # Convert to serializable format
-        results = []
-        for chunk in chunks:
-            results.append({
-                'id': str(chunk.id),
-                'document_name': chunk.document.name,
-                'document_section': chunk.document.section,
-                'document_title': chunk.document.title,
-                'section_name': chunk.section_name,
-                'anchor': chunk.anchor,
-                'text': chunk.text[:500] + '...' if len(chunk.text) > 500 else chunk.text,
-                'token_count': chunk.token_count,
-                'rank': getattr(chunk, 'rank', None),
-                'similarity': getattr(chunk, 'similarity', None),
-            })
-        
-        stats = searcher.get_document_stats()
-    
-    context = {
-        'query': query,
-        'search_type': search_type,
-        'results': results,
-        'stats': stats,
-    }
-    
-    return render(request, "accounts/search.html", context)
-
-
-@csrf_exempt
-def search_api(request):
-    """API endpoint for search functionality"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-    
-    try:
-        data = json.loads(request.body)
-        query = data.get('query', '').strip()
-        search_type = data.get('type', 'fulltext')
-        limit = int(data.get('limit', 20))
-        
-        if not query:
-            return JsonResponse({'error': 'Query is required'}, status=400)
-        
-        searcher = ManPageSearch()
-        chunks = searcher.search_chunks(query, search_type, limit)
-        
-        results = []
-        for chunk in chunks:
-            results.append({
-                'id': str(chunk.id),
-                'document_name': chunk.document.name,
-                'document_section': chunk.document.section,
-                'document_title': chunk.document.title,
-                'section_name': chunk.section_name,
-                'anchor': chunk.anchor,
-                'text': chunk.text,
-                'token_count': chunk.token_count,
-                'rank': getattr(chunk, 'rank', None),
-                'similarity': getattr(chunk, 'similarity', None),
-            })
-        
-        return JsonResponse({
-            'results': results,
-            'total': len(results),
-            'query': query,
-            'search_type': search_type
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)

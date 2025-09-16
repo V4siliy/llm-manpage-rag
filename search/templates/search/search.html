@@ -12,10 +12,9 @@
                 <div class="input-group">
                     <input type="text" name="q" class="form-control" placeholder="Search man pages..." value="{{ query }}" required>
                     <select name="type" class="form-select" style="max-width: 150px;">
-                        <option value="fulltext" {% if search_type == 'fulltext' %}selected{% endif %}>Full-text</option>
-                        <option value="fuzzy" {% if search_type == 'fuzzy' %}selected{% endif %}>Fuzzy</option>
-                        <option value="both" {% if search_type == 'both' %}selected{% endif %}>Both</option>
+                        <option value="vector" {% if search_type == 'vector' %}selected{% endif %}>Vector</option>
                     </select>
+                    <input type="number" name="threshold" class="form-control" placeholder="Threshold" value="{{ score_threshold }}" min="0" max="1" step="0.1" style="max-width: 120px;">
                     <button class="btn btn-primary" type="submit">Search</button>
                 </div>
             </form>
@@ -43,9 +42,6 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <small class="text-muted">
                                         Tokens: {{ result.token_count }}
-                                        {% if result.rank %}
-                                            | Rank: {{ result.rank|floatformat:3 }}
-                                        {% endif %}
                                         {% if result.similarity %}
                                             | Similarity: {{ result.similarity|floatformat:3 }}
                                         {% endif %}
@@ -74,6 +70,18 @@
                         <p><strong>Total Chunks:</strong> {{ stats.total_chunks }}</p>
                         <p><strong>Avg Chunks/Document:</strong> {{ stats.avg_chunks_per_document|floatformat:1 }}</p>
                         
+                        {% if stats.qdrant_info %}
+                            <h6>Qdrant Status:</h6>
+                            <ul class="list-unstyled">
+                                {% if stats.qdrant_info.error %}
+                                    <li class="text-danger">Error: {{ stats.qdrant_info.error }}</li>
+                                {% else %}
+                                    <li>Vectors: {{ stats.qdrant_info.vectors_count }}</li>
+                                    <li>Status: {{ stats.qdrant_info.status }}</li>
+                                {% endif %}
+                            </ul>
+                        {% endif %}
+                        
                         <h6>Top Sections:</h6>
                         <ul class="list-unstyled">
                             {% for section in stats.sections %}
@@ -90,9 +98,10 @@
                 </div>
                 <div class="card-body">
                     <ul class="list-unstyled">
-                        <li><strong>Full-text:</strong> Best for exact matches and technical terms</li>
-                        <li><strong>Fuzzy:</strong> Good for typos and partial matches</li>
-                        <li><strong>Both:</strong> Combines both search methods</li>
+                        <li><strong>Vector:</strong> Semantic similarity search using embeddings</li>
+                        <li><strong>Threshold:</strong> Minimum similarity score (0.0-1.0)</li>
+                        <li><strong>Higher threshold:</strong> More precise but fewer results</li>
+                        <li><strong>Lower threshold:</strong> More results but less precise</li>
                     </ul>
                 </div>
             </div>

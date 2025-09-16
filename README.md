@@ -24,17 +24,13 @@ A Django application for storing and searching Linux man-pages with full-text se
 1. **Clone and setup virtual environment:**
    ```bash
    cd manpager
-   uv venv
-   source .venv/bin/activate
    uv sync
    ```
 
 2. **Configure PostgreSQL:**
    Create a PostgreSQL database and user:
    ```bash
-   CREATE DATABASE manpager;
-   CREATE USER manpager_user WITH PASSWORD 'your_password';
-   GRANT ALL PRIVILEGES ON DATABASE manpager TO manpager_user;
+   docker run --name db-manpager -p 5432:5432 -e POSTGRES_USER=manpager_user -e POSTGRES_PASSWORD=manpager_password -e POSTGRES_DB=manpager -d -v /local/path/data:/var/lib/postgresql/data postgres:15
    ```
 
 3. **Configure environment variables:**
@@ -53,23 +49,29 @@ A Django application for storing and searching Linux man-pages with full-text se
    ```bash
    python manage.py migrate
    ```
-
+   
 5. **Populate database with man-pages data:**
+   ```bash
+   brew install mandoc, pandoc, or groff
+   python ingest_manpages.py
+   ```
+
+6. **Populate database with man-pages data:**
    ```bash
    python manage.py populate_manpages --file data/chunks/chunks.jsonl --clear
    ```
 
-6. **Populate search vectors:**
+7. **Populate search vectors:**
    ```bash
    python manage.py populate_search_vectors
    ```
 
-7. **Create a superuser:**
+8. **Create a superuser:**
    ```bash
    python manage.py createsuperuser
    ```
 
-8. **Run the development server:**
+9. **Run the development server:**
    ```bash
    python manage.py runserver
    ```
@@ -97,7 +99,7 @@ Response:
 {
   "results": [
     {
-      "id": "uuid-here",
+      "id": "uuid",
       "document_name": "getent",
       "document_section": "1",
       "document_title": "getent - get entries from Name Service Switch libraries",
@@ -146,15 +148,15 @@ The system uses PostgreSQL's 'simple' text search configuration, which is better
 
 ### Indexes Created
 
-1. **Full-text search**: `CREATE INDEX idx_chunk_fts ON accounts_chunk USING GIN (search_vector);`
-2. **Fuzzy search**: `CREATE INDEX idx_chunk_text_trgm ON accounts_chunk USING GIN (text gin_trgm_ops);`
+1. **Full-text search**: `CREATE INDEX idx_chunk_fts ON search_chunk USING GIN (search_vector);`
+2. **Fuzzy search**: `CREATE INDEX idx_chunk_text_trgm ON search_chunk USING GIN (text gin_trgm_ops);`
 3. **Extension**: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`
 
 ## Development
 
 ### Adding New Search Features
 
-The `ManPageSearch` class in `accounts/search.py` provides the main search functionality. You can extend it to add:
+The `ManPageSearch` class in `search/search.py` provides the main search functionality. You can extend it to add:
 
 - Phrase search
 - Boolean search operators
@@ -169,6 +171,20 @@ Modify the search configuration in `settings.py`:
 POSTGRES_FULL_TEXT_SEARCH_CONFIG = 'simple'  # or 'english', 'spanish', etc.
 ```
 
-## License
+## Embeddings
 
-This project is licensed under the MIT License.
+### Jina AI Model Benefits
+
+- **Optimized for search**: Specifically designed for semantic search tasks
+- **High quality**: Better performance than general-purpose embedding models
+- **Efficient**: Good balance between quality and speed
+- **Long context**: Supports up to 8192 tokens per input
+- **Multilingual support**: Available in multiple languages
+
+### Alternative Jina Models
+
+| Model                                  | Dimensions | Size | Quality | Speed | Language |
+|----------------------------------------|------------|------|---------|-------|----------|
+| (*) jinaai/jina-embeddings-v2-small-en | 512 | ~400MB | High | Fast | English |
+| jinaai/jina-embeddings-v2-base-en      | 768 | ~1.1GB | Higher | Medium | English |
+| jinaai/jina-embeddings-v2-large-en     | 1024 | ~2.2GB | Highest | Slower | English |

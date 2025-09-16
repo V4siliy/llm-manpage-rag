@@ -1,11 +1,11 @@
 import json
-import os
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from accounts.models import Document, Chunk
+from search.models import Document, Chunk
+from search.qdrant_service import QdrantService
 
 
 class Command(BaseCommand):
@@ -37,6 +37,15 @@ class Command(BaseCommand):
         
         if not file_path.exists():
             raise CommandError(f'File not found: {file_path}')
+        
+        # Initialize Qdrant service
+        try:
+            qdrant_service = QdrantService()
+            self.stdout.write(self.style.SUCCESS('Connected to Qdrant.'))
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'Could not connect to Qdrant: {e}'))
+            self.stdout.write('Continuing without vector indexing...')
+            qdrant_service = None
         
         if options['clear']:
             self.stdout.write('Clearing existing data...')
@@ -91,7 +100,8 @@ class Command(BaseCommand):
                         section_name=data['section_name'],
                         anchor=data['anchor'],
                         text=data['text'],
-                        token_count=data['token_count']
+                        token_count=data['token_count'],
+                        embedding_model=qdrant_service.embedding_model_name if qdrant_service else 'jinaai/jina-embeddings-v2-small-en'
                     )
                     chunks_to_create.append(chunk)
                     
@@ -103,7 +113,7 @@ class Command(BaseCommand):
                     
                     # Process in batches
                     if len(chunks_to_create) >= batch_size:
-                        self._process_batch(documents, chunks_to_create)
+                        self._process_batch(documents, chunks_to_create, qdrant_service)
                         documents = {}
                         chunks_to_create = []
                         self.stdout.write(f'Processed {processed_count} chunks...')
@@ -121,13 +131,13 @@ class Command(BaseCommand):
         
         # Process remaining items
         if chunks_to_create:
-            self._process_batch(documents, chunks_to_create)
+            self._process_batch(documents, chunks_to_create, qdrant_service)
         
         self.stdout.write(
             self.style.SUCCESS(f'Successfully processed {processed_count} chunks from {processed_count} lines.')
         )
 
-    def _process_batch(self, documents, chunks_to_create):
+    def _process_batch(self, documents, chunks_to_create, qdrant_service):
         """Process a batch of documents and chunks."""
         with transaction.atomic():
             # Bulk create documents
@@ -157,3 +167,36 @@ class Command(BaseCommand):
             
             # Bulk create chunks
             Chunk.objects.bulk_create(chunks_to_create, ignore_conflicts=True)
+            
+            # Index chunks in Qdrant if service is available
+            if qdrant_service:
+                self._index_chunks_in_qdrant(chunks_to_create, qdrant_service)
+    
+    def _index_chunks_in_qdrant(self, chunks, qdrant_service):
+        """Index chunks in Qdrant vector database."""
+        for chunk in chunks:
+            try:
+                metadata = {
+                    'document_name': chunk.document.name,
+                    'document_section': chunk.document.section,
+                    'document_title': chunk.document.title,
+                    'section_name': chunk.section_name,
+                    'anchor': chunk.anchor,
+                    'token_count': chunk.token_count,
+                    'version_tag': chunk.document.version_tag
+                }
+                
+                qdrant_id = qdrant_service.add_chunk(
+                    chunk_id=str(chunk.id),
+                    text=chunk.text,
+                    metadata=metadata
+                )
+                
+                # Update chunk with Qdrant ID
+                chunk.qdrant_id = qdrant_id
+                chunk.save(update_fields=['qdrant_id'])
+                
+            except Exception as e:
+                self.stdout.write(
+                    self.style.WARNING(f'Failed to index chunk {chunk.id} in Qdrant: {e}')
+                )

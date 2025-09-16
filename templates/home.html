@@ -108,6 +108,7 @@
             <div class="logo">ManPager</div>
             <nav class="nav">
                 {% if user.is_authenticated %}
+                    <a href="{% url 'search:search' %}">Search</a>
                     <a href="{% url 'accounts:profile' %}">Profile</a>
                     <a href="{% url 'accounts:logout' %}">Sign Out</a>
                 {% else %}
