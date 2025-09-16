@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Search Man Pages{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Search Man Pages</h1>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <form method="GET" class="mb-4">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Search man pages..." value="{{ query }}" required>
+                    <select name="type" class="form-select" style="max-width: 150px;">
+                        <option value="fulltext" {% if search_type == 'fulltext' %}selected{% endif %}>Full-text</option>
+                        <option value="fuzzy" {% if search_type == 'fuzzy' %}selected{% endif %}>Fuzzy</option>
+                        <option value="both" {% if search_type == 'both' %}selected{% endif %}>Both</option>
+                    </select>
+                    <button class="btn btn-primary" type="submit">Search</button>
+                </div>
+            </form>
+            
+            {% if query %}
+                <div class="mb-3">
+                    <h3>Search Results for "{{ query }}"</h3>
+                    <p class="text-muted">{{ results|length }} results found</p>
+                </div>
+                
+                {% if results %}
+                    {% for result in results %}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <a href="#" class="text-decoration-none">
+                                        {{ result.document_name }}({{ result.document_section }})
+                                    </a>
+                                    <small class="text-muted">- {{ result.section_name }}</small>
+                                </h5>
+                                <small class="text-muted">{{ result.document_title }}</small>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">{{ result.text }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        Tokens: {{ result.token_count }}
+                                        {% if result.rank %}
+                                            | Rank: {{ result.rank|floatformat:3 }}
+                                        {% endif %}
+                                        {% if result.similarity %}
+                                            | Similarity: {{ result.similarity|floatformat:3 }}
+                                        {% endif %}
+                                    </small>
+                                    <small class="text-muted">{{ result.anchor }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-info">
+                        No results found for "{{ query }}". Try a different search term or search type.
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4">
+            {% if stats %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Database Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Total Documents:</strong> {{ stats.total_documents }}</p>
+                        <p><strong>Total Chunks:</strong> {{ stats.total_chunks }}</p>
+                        <p><strong>Avg Chunks/Document:</strong> {{ stats.avg_chunks_per_document|floatformat:1 }}</p>
+                        
+                        <h6>Top Sections:</h6>
+                        <ul class="list-unstyled">
+                            {% for section in stats.sections %}
+                                <li>{{ section.section_name }}: {{ section.count }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Search Tips</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li><strong>Full-text:</strong> Best for exact matches and technical terms</li>
+                        <li><strong>Fuzzy:</strong> Good for typos and partial matches</li>
+                        <li><strong>Both:</strong> Combines both search methods</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
