@@ -104,7 +104,12 @@ def search_api(request):
 @login_required
 def ask_view(request):
     """Ask questions and get answers using RAG workflow"""
-    return render(request, "search/ask.html")
+    from django.conf import settings
+    import json
+    context = {
+        'loading_messages_json': json.dumps(settings.FUNNY_LOADING_SENTENCES)
+    }
+    return render(request, "search/ask.html", context)
 
 
 @csrf_exempt

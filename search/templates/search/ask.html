@@ -91,43 +91,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorSection = document.getElementById('errorSection');
     const errorMessage = document.getElementById('errorMessage');
 
-    // Loading messages rotation
+    // Loading messages from Django settings
+    const loadingMessages = {{ loading_messages_json|safe }};
     let loadingInterval;
-    let messageIndex = 0;
-    const loadingMessages = [
-        "Consulting the manual pages...",
-        "Decoding ancient UNIX wisdom...",
-        "Asking the kernel for permission...",
-        "Parsing man pages with extreme prejudice...",
-        "Summoning the spirit of Dennis Ritchie...",
-        "Debugging reality.exe...",
-        "Compiling answers from source code...",
-        "Running sudo apt-get wisdom...",
-        "Brewing coffee for the documentation team...",
-        "Teaching a cat to use vi...",
-        "Explaining recursion to a recursive function...",
-        "Optimizing the space-time continuum...",
-        "Running make install on common sense...",
-        "Segfaulting into enlightenment...",
-        "Garbage collecting old memories...",
-        "Forking processes in the knowledge tree...",
-        "Mounting the filesystem of understanding...",
-        "Chmod 777 on the answer directory...",
-        "Piping wisdom through grep...",
-        "Awaiting response from the mainframe..."
-    ];
 
     function startLoadingAnimation() {
         loadingSection.style.display = 'block';
         resultsSection.style.display = 'none';
         errorSection.style.display = 'none';
         
-        messageIndex = 0;
-        loadingMessage.textContent = loadingMessages[messageIndex];
+        // Show random message immediately
+        loadingMessage.textContent = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
         
+        // Change to a new random message every 2 seconds
         loadingInterval = setInterval(() => {
-            messageIndex = (messageIndex + 1) % loadingMessages.length;
-            loadingMessage.textContent = loadingMessages[messageIndex];
+            loadingMessage.textContent = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
         }, 2000);
     }
 

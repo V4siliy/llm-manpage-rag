@@ -178,4 +178,4 @@ FUNNY_LOADING_SENTENCES = [
 
 # OpenAI Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = "gpt-4o-mini"  # Using GPT-4o-mini as GPT-5 nano is not available yet
+OPENAI_MODEL = os.getenv("OPENAI_MODEL")
