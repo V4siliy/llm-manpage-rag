@@ -126,8 +126,20 @@ document.addEventListener('DOMContentLoaded', function() {
     function showResults(data) {
         stopLoadingAnimation();
         
-        // Display answer
-        answerContent.innerHTML = `<div class="answer-text">${data.answer.replace(/\n/g, '<br>')}</div>`;
+        // Decode Unicode escape sequences (like \u000A for newlines)
+        const decodedAnswer = data.answer.replace(/\\u([0-9a-fA-F]{4})/g, function(match, hex) {
+            return String.fromCharCode(parseInt(hex, 16));
+        });
+        
+        // Convert markdown to HTML and sanitize
+        const markdownHtml = marked.parse(decodedAnswer);
+        const sanitizedHtml = DOMPurify.sanitize(markdownHtml);
+        
+        // Display answer with markdown converted to HTML
+        answerContent.innerHTML = `<div class="answer-text">${sanitizedHtml}</div>`;
+        
+        // Highlight code blocks with Prism.js
+        Prism.highlightAllUnder(answerContent);
         
         // Display sources
         if (data.sources && data.sources.length > 0) {
@@ -218,6 +230,69 @@ document.addEventListener('DOMContentLoaded', function() {
 .answer-text {
     line-height: 1.6;
     font-size: 1.1rem;
+}
+
+/* Code block styling */
+.answer-text pre {
+    background-color: #2d3748;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+    border: 1px solid #4a5568;
+}
+
+.answer-text code {
+    background-color: #f7fafc;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+    color: #e53e3e;
+    border: 1px solid #e2e8f0;
+}
+
+.answer-text pre code {
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    color: inherit;
+    font-size: inherit;
+}
+
+/* Prism.js theme override for better integration */
+.answer-text pre[class*="language-"] {
+    background-color: #2d3748;
+    color: #e2e8f0;
+}
+
+/* Inline code styling */
+.answer-text p code,
+.answer-text li code {
+    background-color: #f7fafc;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+    color: #e53e3e;
+    border: 1px solid #e2e8f0;
+}
+
+/* Blockquote styling */
+.answer-text blockquote {
+    border-left: 4px solid #0d6efd;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* List styling */
+.answer-text ul,
+.answer-text ol {
+    padding-left: 1.5rem;
+}
+
+.answer-text li {
+    margin-bottom: 0.5rem;
 }
 
 .source-item {

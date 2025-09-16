@@ -38,7 +38,7 @@
                                 <small class="text-muted">{{ result.document_title }}</small>
                             </div>
                             <div class="card-body">
-                                <p class="card-text">{{ result.text }}</p>
+                                <div class="search-result-text" data-text="{{ result.text|escapejs }}"></div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <small class="text-muted">
                                         Tokens: {{ result.token_count }}
@@ -108,4 +108,111 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Process all search result texts with markdown formatting
+    const searchResultTexts = document.querySelectorAll('.search-result-text');
+    
+    searchResultTexts.forEach(function(element) {
+        const rawText = element.getAttribute('data-text');
+        if (rawText) {
+            // Decode Unicode escape sequences (like \u000A for newlines)
+            const decodedText = rawText.replace(/\\u([0-9a-fA-F]{4})/g, function(match, hex) {
+                return String.fromCharCode(parseInt(hex, 16));
+            });
+            
+            // Convert markdown to HTML and sanitize
+            const markdownHtml = marked.parse(decodedText);
+            const sanitizedHtml = DOMPurify.sanitize(markdownHtml);
+            
+            // Set the processed HTML
+            element.innerHTML = sanitizedHtml;
+        }
+    });
+    
+    // Highlight code blocks with Prism.js
+    Prism.highlightAll();
+});
+</script>
+
+<style>
+/* Search result text styling */
+.search-result-text {
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+/* Code block styling for search results */
+.search-result-text pre {
+    background-color: #2d3748;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+    border: 1px solid #4a5568;
+}
+
+.search-result-text code {
+    background-color: #f7fafc;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+    color: #e53e3e;
+    border: 1px solid #e2e8f0;
+}
+
+.search-result-text pre code {
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    color: inherit;
+    font-size: inherit;
+}
+
+/* Prism.js theme override for search results */
+.search-result-text pre[class*="language-"] {
+    background-color: #2d3748;
+    color: #e2e8f0;
+}
+
+/* Inline code styling for search results */
+.search-result-text p code,
+.search-result-text li code {
+    background-color: #f7fafc;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+    color: #e53e3e;
+    border: 1px solid #e2e8f0;
+}
+
+/* Blockquote styling for search results */
+.search-result-text blockquote {
+    border-left: 4px solid #0d6efd;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* List styling for search results */
+.search-result-text ul,
+.search-result-text ol {
+    padding-left: 1.5rem;
+}
+
+.search-result-text li {
+    margin-bottom: 0.5rem;
+}
+
+/* Ensure proper spacing for paragraphs */
+.search-result-text p {
+    margin-bottom: 1rem;
+}
+
+.search-result-text p:last-child {
+    margin-bottom: 0;
+}
+</style>
 {% endblock %}
