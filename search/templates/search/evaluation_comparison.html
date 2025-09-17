@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Evaluation Comparison{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Evaluation Comparison</h1>
+                <div>
+                    <a href="{% url 'search:evaluation-dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            {% if evaluation_runs %}
+            <!-- Charts -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Metrics Comparison</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="metricsChart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Detailed Comparison</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Run Name</th>
+                                    <th>Date</th>
+                                    <th>Search Type</th>
+                                    <th>Queries</th>
+                                    <th>Recall@1</th>
+                                    <th>Recall@5</th>
+                                    <th>Recall@10</th>
+                                    <th>Recall@20</th>
+                                    <th>nDCG@1</th>
+                                    <th>nDCG@5</th>
+                                    <th>nDCG@10</th>
+                                    <th>nDCG@20</th>
+                                    <th>MRR</th>
+                                    <th>Success Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for run in evaluation_runs %}
+                                <tr>
+                                    <td>{{ run.name }}</td>
+                                    <td>{{ run.created_at|date:"Y-m-d" }}</td>
+                                    <td>{{ run.search_type }}</td>
+                                    <td>{{ run.successful_queries }}/{{ run.total_queries }}</td>
+                                    <td>{{ run.recall_at_1|floatformat:4|default:"-" }}</td>
+                                    <td>{{ run.recall_at_5|floatformat:4|default:"-" }}</td>
+                                    <td>{{ run.recall_at_10|floatformat:4|default:"-" }}</td>
+                                    <td>{{ run.recall_at_20|floatformat:4|default:"-" }}</td>
+                                    <td>{{ run.ndcg_at_1|floatformat:4|default:"-" }}</td>
+                                    <td>{{ run.ndcg_at_5|floatformat:4|default:"-" }}</td>
+                                    <td>{{ run.ndcg_at_10|floatformat:4|default:"-" }}</td>
+                                    <td>{{ run.ndcg_at_20|floatformat:4|default:"-" }}</td>
+                                    <td>{{ run.mrr|floatformat:4|default:"-" }}</td>
+                                    <td>
+                                        {% if run.total_queries > 0 %}
+                                            {% widthratio run.successful_queries run.total_queries 100 %}%
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No completed evaluation runs found</h5>
+                <p class="text-muted">Run some evaluations to see comparison charts here.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+{% if evaluation_runs %}
+const chartData = {{ chart_data|safe }};
+
+const ctx = document.getElementById('metricsChart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: chartData.labels,
+        datasets: [
+            {
+                label: 'Recall@5',
+                data: chartData.recall_at_5,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            },
+            {
+                label: 'nDCG@5',
+                data: chartData.ndcg_at_5,
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.1
+            },
+            {
+                label: 'MRR',
+                data: chartData.mrr,
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                tension: 0.1
+            },
+            {
+                label: 'Success Rate',
+                data: chartData.success_rate,
+                borderColor: 'rgb(255, 205, 86)',
+                backgroundColor: 'rgba(255, 205, 86, 0.2)',
+                tension: 0.1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 1.0
+            }
+        },
+        plugins: {
+            title: {
+                display: true,
+                text: 'Evaluation Metrics Over Time'
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

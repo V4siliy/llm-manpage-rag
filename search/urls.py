@@ -9,4 +9,10 @@ urlpatterns = [
     path("ask/", views.ask_view, name="ask"),
     path("ask-api/", views.ask_api, name="ask-api"),
     path("loading-message/", views.loading_message_api, name="loading-message"),
+    
+    # Admin-only evaluation views
+    path("evaluation/", views.evaluation_dashboard, name="evaluation-dashboard"),
+    path("evaluation/<uuid:run_id>/", views.evaluation_run_detail, name="evaluation-run-detail"),
+    path("evaluation/comparison/", views.evaluation_comparison, name="evaluation-comparison"),
+    path("evaluation/api/", views.evaluation_api, name="evaluation-api"),
 ]

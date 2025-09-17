@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Evaluation Run Detail - {{ evaluation_run.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>{{ evaluation_run.name }}</h1>
+                    <p class="text-muted mb-0">
+                        Created: {{ evaluation_run.created_at|date:"Y-m-d H:i" }}
+                        {% if evaluation_run.completed_at %}
+                            | Completed: {{ evaluation_run.completed_at|date:"Y-m-d H:i" }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'search:evaluation-dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Run Information -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Run Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">Status:</dt>
+                                <dd class="col-sm-8">
+                                    {% if evaluation_run.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif evaluation_run.status == 'running' %}
+                                        <span class="badge bg-warning">Running</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </dd>
+                                <dt class="col-sm-4">Search Type:</dt>
+                                <dd class="col-sm-8">{{ evaluation_run.search_type }}</dd>
+                                <dt class="col-sm-4">Score Threshold:</dt>
+                                <dd class="col-sm-8">{{ evaluation_run.score_threshold }}</dd>
+                                <dt class="col-sm-4">Limit:</dt>
+                                <dd class="col-sm-8">{{ evaluation_run.limit }}</dd>
+                                <dt class="col-sm-4">Embedding Model:</dt>
+                                <dd class="col-sm-8">{{ evaluation_run.embedding_model }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Summary Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">Total Queries:</dt>
+                                <dd class="col-sm-8">{{ evaluation_run.total_queries }}</dd>
+                                <dt class="col-sm-4">Successful:</dt>
+                                <dd class="col-sm-8">{{ evaluation_run.successful_queries }}</dd>
+                                <dt class="col-sm-4">Failed:</dt>
+                                <dd class="col-sm-8">{{ evaluation_run.failed_queries }}</dd>
+                                <dt class="col-sm-4">Success Rate:</dt>
+                                <dd class="col-sm-8">
+                                    {% if success_rate %}
+                                        {{ evaluation_run.successful_queries|floatformat:0 }}/{{ evaluation_run.total_queries }} 
+                                        ({{ success_rate|floatformat:1 }}%)
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics -->
+            {% if evaluation_run.status == 'completed' %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Metrics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-primary">Recall</h4>
+                                        <p class="mb-1">@1: {{ evaluation_run.recall_at_1|floatformat:4 }}</p>
+                                        <p class="mb-1">@5: {{ evaluation_run.recall_at_5|floatformat:4 }}</p>
+                                        <p class="mb-1">@10: {{ evaluation_run.recall_at_10|floatformat:4 }}</p>
+                                        <p class="mb-0">@20: {{ evaluation_run.recall_at_20|floatformat:4 }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-success">nDCG</h4>
+                                        <p class="mb-1">@1: {{ evaluation_run.ndcg_at_1|floatformat:4 }}</p>
+                                        <p class="mb-1">@5: {{ evaluation_run.ndcg_at_5|floatformat:4 }}</p>
+                                        <p class="mb-1">@10: {{ evaluation_run.ndcg_at_10|floatformat:4 }}</p>
+                                        <p class="mb-0">@20: {{ evaluation_run.ndcg_at_20|floatformat:4 }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-info">MRR</h4>
+                                        <p class="mb-0">{{ evaluation_run.mrr|floatformat:4 }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-warning">Rank Distribution</h4>
+                                        {% for rank_range, count in rank_distribution.items %}
+                                            <p class="mb-1">{{ rank_range }}: {{ count }}</p>
+                                        {% empty %}
+                                            <p class="mb-0">No chunks found</p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Results Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Query Results</h5>
+                </div>
+                <div class="card-body">
+                    {% if results %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Query</th>
+                                    <th>Target</th>
+                                    <th>Found</th>
+                                    <th>Rank</th>
+                                    <th>Score</th>
+                                    <th>Recall@5</th>
+                                    <th>nDCG@5</th>
+                                    <th>MRR</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr>
+                                    <td>
+                                        <div style="max-width: 300px;">
+                                            {{ result.query.query|truncatechars:100 }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ result.query.document_id }}<br>
+                                            {{ result.query.target_section }}:{{ result.query.target_anchor }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if result.target_chunk_found %}
+                                            <span class="badge bg-success">Yes</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">No</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.target_chunk_rank %}
+                                            {{ result.target_chunk_rank }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.target_chunk_score %}
+                                            {{ result.target_chunk_score|floatformat:4 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.recall_at_5 %}
+                                            {{ result.recall_at_5|floatformat:4 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.ndcg_at_5 %}
+                                            {{ result.ndcg_at_5|floatformat:4 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.mrr %}
+                                            {{ result.mrr|floatformat:4 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.success %}
+                                            <span class="badge bg-success">Success</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Failed</span>
+                                            {% if result.error_message %}
+                                                <br><small class="text-muted">{{ result.error_message|truncatechars:50 }}</small>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No results found</h5>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

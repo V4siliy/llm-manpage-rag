@@ -11,6 +11,8 @@ A Django application for storing and searching Linux man-pages with advanced RAG
 - **Ask Page**: Interactive Q&A interface with funny loading animations
 - **Management Commands**: Populate database from JSONL chunks data
 - **Search API**: RESTful API for both search and question-answering
+- **Evaluation System**: Comprehensive evaluation framework with Recall@k, nDCG, and MRR metrics
+- **Admin Dashboard**: Admin-only views for monitoring evaluation results and performance
 - **Modern Web Interface**: Bootstrap-based responsive interface with Font Awesome icons
 
 ## Setup
@@ -76,12 +78,17 @@ A Django application for storing and searching Linux man-pages with advanced RAG
    python manage.py populate_search_vectors
    ```
 
-9. **Create a superuser:**
+9. **Load evaluation dataset (optional):**
    ```bash
-   python manage.py createsuperuser
+   python manage.py run_evaluation load --file data/eval/eval.jsonl
    ```
 
-10. **Run the development server:**
+10. **Create a superuser:**
+    ```bash
+    python manage.py createsuperuser
+    ```
+
+11. **Run the development server:**
     ```bash
     python manage.py runserver
     ```
@@ -93,6 +100,7 @@ A Django application for storing and searching Linux man-pages with advanced RAG
 - **Search Page**: Visit `http://localhost:8000/search/` to use the traditional search interface
 - **Ask Page**: Visit `http://localhost:8000/search/ask/` to ask questions and get intelligent answers
 - **Home Page**: Visit `http://localhost:8000/` for an overview of features
+- **Evaluation Dashboard**: Visit `http://localhost:8000/search/evaluation/` to view evaluation results (admin only)
 
 ### RAG Workflow
 
@@ -163,6 +171,48 @@ curl -X POST http://localhost:8000/search/ask-api/ \
 
 - `populate_manpages`: Import data from JSONL file
 - `populate_search_vectors`: Generate embeddings and populate Qdrant vector database
+- `run_evaluation`: Run evaluations and manage evaluation data
+
+### Evaluation System
+
+The system includes a comprehensive evaluation framework to assess search performance:
+
+#### Loading Evaluation Data
+```bash
+# Load evaluation queries from JSONL file
+python manage.py run_evaluation load --file data/eval/eval.jsonl
+```
+
+#### Running Evaluations
+```bash
+# Run a complete evaluation
+python manage.py run_evaluation run --name "My Evaluation" --limit 20
+
+# Run with custom parameters
+python manage.py run_evaluation run --name "Test Run" --search-type vector --score-threshold 0.8 --limit 10
+```
+
+#### Viewing Results
+```bash
+# List all evaluation runs
+python manage.py run_evaluation list
+```
+
+#### Evaluation Metrics
+- **Recall@k**: Measures if target chunk is found in top-k results (k=1,5,10,20)
+- **nDCG@k**: Normalized Discounted Cumulative Gain for ranking quality
+- **MRR**: Mean Reciprocal Rank for overall ranking performance
+
+#### Admin Interface
+- **Dashboard**: `/search/evaluation/` - Overview of all evaluation runs
+- **Run Detail**: `/search/evaluation/<run_id>/` - Detailed results for specific run
+- **Comparison**: `/search/evaluation/comparison/` - Compare metrics across runs
+- **API**: `/search/evaluation/api/` - JSON API for evaluation data
+- **Admin Panel**: `/admin/search/evaluationquery/` - Run evaluations directly from Django admin
+  - Select specific queries and run evaluation
+  - Run evaluation for all queries
+  - Rerun existing evaluations with same parameters
+  - See `ADMIN_EVALUATION_GUIDE.md` for detailed instructions
 
 ## Database Schema
 
@@ -185,6 +235,43 @@ curl -X POST http://localhost:8000/search/ask-api/ \
 - `token_count`: Number of tokens
 - `qdrant_id`: Qdrant vector database ID
 - `embedding_model`: Embedding model used (default: jinaai/jina-embeddings-v2-small-en)
+
+### Evaluation Models
+
+#### EvaluationQuery Model
+- `id`: UUID primary key
+- `query`: The evaluation query text
+- `expected_substrings`: List of expected substrings that should be found
+- `document_id`: Target document ID from eval data
+- `target_section`: Target section name
+- `target_anchor`: Target anchor identifier
+- `created_at`: Creation timestamp
+
+#### EvaluationRun Model
+- `id`: UUID primary key
+- `name`: Name/description of evaluation run
+- `search_type`: Type of search used (vector, hybrid)
+- `score_threshold`: Score threshold for search
+- `limit`: Maximum number of results returned
+- `embedding_model`: Embedding model used
+- `status`: Run status (running, completed, failed)
+- `created_at`: Creation timestamp
+- `completed_at`: Completion timestamp
+- **Metrics**: `recall_at_1`, `recall_at_5`, `recall_at_10`, `recall_at_20`, `ndcg_at_1`, `ndcg_at_5`, `ndcg_at_10`, `ndcg_at_20`, `mrr`
+- **Stats**: `total_queries`, `successful_queries`, `failed_queries`
+
+#### EvaluationResult Model
+- `id`: UUID primary key
+- `evaluation_run`: Foreign key to EvaluationRun
+- `query`: Foreign key to EvaluationQuery
+- `retrieved_chunks`: List of retrieved chunk IDs with scores
+- `target_chunk_found`: Whether target chunk was found
+- `target_chunk_rank`: Rank of target chunk if found
+- `target_chunk_score`: Score of target chunk if found
+- **Metrics**: `recall_at_1`, `recall_at_5`, `recall_at_10`, `recall_at_20`, `ndcg_at_1`, `ndcg_at_5`, `ndcg_at_10`, `ndcg_at_20`, `mrr`
+- `error_message`: Error message if evaluation failed
+- `success`: Whether evaluation was successful
+- `created_at`: Creation timestamp
 
 ## RAG Architecture
 
@@ -225,6 +312,16 @@ The `ManPageRAGService` class in `search/rag_service.py` provides the core RAG f
 - Custom embedding models
 - Advanced context filtering
 - Answer quality scoring
+
+### Extending the Evaluation System
+
+The evaluation system in `search/evaluation_utils.py` provides comprehensive metrics calculation. You can extend it to add:
+
+- Custom evaluation metrics (e.g., Precision@k, F1@k)
+- Different relevance scoring methods
+- A/B testing capabilities
+- Automated evaluation scheduling
+- Performance regression detection
 
 ### Customizing the System
 

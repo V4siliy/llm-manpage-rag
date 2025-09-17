@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Evaluation Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Evaluation Dashboard</h1>
+                <div>
+                    <a href="{% url 'search:evaluation-comparison' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-chart-line"></i> Compare Runs
+                    </a>
+                    <a href="{% url 'admin:search_evaluationrun_add' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> New Run
+                    </a>
+                </div>
+            </div>
+
+            <!-- Summary Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ total_runs }}</h4>
+                                    <p class="mb-0">Total Runs</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-play-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ completed_runs }}</h4>
+                                    <p class="mb-0">Completed</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ running_runs }}</h4>
+                                    <p class="mb-0">Running</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-spinner fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ failed_runs }}</h4>
+                                    <p class="mb-0">Failed</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-exclamation-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latest Metrics -->
+            {% if latest_metrics %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Latest Metrics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h3 class="text-primary">{{ latest_metrics.recall_at_5|floatformat:4 }}</h3>
+                                        <p class="text-muted">Recall@5</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h3 class="text-success">{{ latest_metrics.ndcg_at_5|floatformat:4 }}</h3>
+                                        <p class="text-muted">nDCG@5</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h3 class="text-info">{{ latest_metrics.mrr|floatformat:4 }}</h3>
+                                        <p class="text-muted">MRR</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h3 class="text-warning">{{ latest_metrics.successful_queries }}/{{ latest_metrics.total_queries }}</h3>
+                                        <p class="text-muted">Success Rate</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Evaluation Runs Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Evaluation Runs</h5>
+                </div>
+                <div class="card-body">
+                    {% if evaluation_runs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Search Type</th>
+                                    <th>Queries</th>
+                                    <th>Recall@5</th>
+                                    <th>nDCG@5</th>
+                                    <th>MRR</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for run in evaluation_runs %}
+                                <tr>
+                                    <td>{{ run.name }}</td>
+                                    <td>
+                                        {% if run.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif run.status == 'running' %}
+                                            <span class="badge bg-warning">Running</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ run.search_type }}</td>
+                                    <td>{{ run.successful_queries }}/{{ run.total_queries }}</td>
+                                    <td>
+                                        {% if run.recall_at_5 %}
+                                            {{ run.recall_at_5|floatformat:4 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if run.ndcg_at_5 %}
+                                            {{ run.ndcg_at_5|floatformat:4 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if run.mrr %}
+                                            {{ run.mrr|floatformat:4 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ run.created_at|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'search:evaluation-run-detail' run.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No evaluation runs found</h5>
+                        <p class="text-muted">Run your first evaluation to see results here.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
