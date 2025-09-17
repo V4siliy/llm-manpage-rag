@@ -14,4 +14,6 @@ dependencies = [
     "transformers>=4.30.0",
     "torch>=2.0.0",
     "dspy>=3.0.3",
+    "requests>=2.31.0",
+    "uv>=0.1.0",
 ]

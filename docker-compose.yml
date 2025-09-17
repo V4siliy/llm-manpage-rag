@@ -1,0 +1,87 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: manpager_postgres
+    environment:
+      POSTGRES_DB: manpager
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: manpager_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  django:
+    build: .
+    container_name: manpager_django
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=false
+      - SECRET_KEY=your-secret-key-change-in-production
+      - DB_NAME=manpager
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_COLLECTION=manpages
+      - EMBEDDING_MODEL=jinaai/jina-embeddings-v2-small-en
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+    volumes:
+      - .:/app
+      - django_static:/app/staticfiles
+      - django_media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python manage.py migrate &&
+        python manage.py collectstatic --noinput &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+  nginx:
+    image: nginx:alpine
+    container_name: manpager_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - django_static:/app/staticfiles:ro
+      - django_media:/app/media:ro
+    depends_on:
+      - django
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  django_static:
+  django_media:
