@@ -23,6 +23,11 @@
                     <a class="nav-link" href="{% url 'search:ask' %}">
                         <i class="fas fa-question-circle"></i> Ask
                     </a>
+                    {% if user.is_staff %}
+                        <a class="nav-link" href="{% url 'search:evaluation-dashboard' %}">
+                            <i class="fas fa-chart-bar"></i> Evaluation
+                        </a>
+                    {% endif %}
                     <a class="nav-link" href="{% url 'accounts:profile' %}">
                         <i class="fas fa-user"></i> Profile
                     </a>
